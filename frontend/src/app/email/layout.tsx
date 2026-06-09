@@ -7,7 +7,7 @@ export default function EmailLayout({ children }: { children: React.ReactNode })
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <EmailNav />
-        <div className="flex-1 overflow-y-auto bg-gray-50">{children}</div>
+        <div className="flex-1 overflow-hidden bg-gray-50">{children}</div>
       </div>
     </div>
   );
