@@ -10,19 +10,20 @@
   },
   "dependencies": {
     "@puckeditor/core": "^0.21.1",
+    "@radix-ui/react-slot": "^1.2.5",
     "@react-email/components": "^1.0.9",
     "@temporalio/activity": "^1.15.0",
     "@temporalio/client": "^1.15.0",
     "@temporalio/worker": "^1.15.0",
     "@temporalio/workflow": "^1.15.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.17.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-email": "^5.2.9",
     "resend": "^6.9.3",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.17.0",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
