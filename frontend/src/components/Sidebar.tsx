@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useApiStatus } from "@/context/ApiStatusContext";
 import {
   LayoutDashboard,
@@ -64,6 +65,7 @@ const statusConfig = {
 export function Sidebar() {
   const apiStatus = useApiStatus();
   const { label, dot } = statusConfig[apiStatus];
+  const pathname = usePathname();
   return (
     <div className="w-[250px] flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full relative">
       <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-cyan-400/20" />
@@ -100,13 +102,15 @@ export function Sidebar() {
               {group.items.map((item) => {
                 const Icon = item.icon;
                 if ("href" in item && item.href) {
+                  const isActive = pathname.startsWith(item.href);
                   return (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-md text-gray-600 hover:bg-cyan-50 hover:text-cyan-600 transition-colors group text-[14px]"
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors text-[14px] relative group ${isActive ? "bg-cyan-50 text-cyan-600 font-medium" : "text-gray-600 hover:bg-cyan-50 hover:text-cyan-600"}`}
                     >
-                      <Icon className="w-[18px] h-[18px] group-hover:text-cyan-500" strokeWidth={2} />
+                      {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-cyan-400 rounded-r-full" />}
+                      <Icon className={`w-[18px] h-[18px] ${isActive ? "text-cyan-500" : "group-hover:text-cyan-500"}`} strokeWidth={isActive ? 2.5 : 2} />
                       {item.name}
                     </Link>
                   );
