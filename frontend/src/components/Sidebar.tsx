@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useApiStatus } from "@/context/ApiStatusContext";
 import {
   LayoutDashboard,
   Briefcase,
@@ -54,7 +55,15 @@ const NAV_GROUPS = [
   },
 ];
 
+const statusConfig = {
+  loading: { label: "Connecting...", dot: "bg-yellow-400 animate-pulse" },
+  ok: { label: "API connected",  dot: "bg-green-400" },
+  error: { label: "API unreachable", dot: "bg-red-400" },
+};
+
 export function Sidebar() {
+  const apiStatus = useApiStatus();
+  const { label, dot } = statusConfig[apiStatus];
   return (
     <div className="w-[250px] flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full relative">
       <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-cyan-400/20" />
@@ -115,6 +124,14 @@ export function Sidebar() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* API health */}
+      <div className="p-4 border-t border-gray-100">
+        <div className="flex items-center gap-2 px-3 py-2">
+          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dot}`} />
+          <span className="text-[12px] text-gray-400">{label}</span>
+        </div>
       </div>
     </div>
   );
