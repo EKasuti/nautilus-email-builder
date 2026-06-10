@@ -4,7 +4,7 @@ import { useState, useEffect, useLayoutEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { X, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 
-const STORAGE_KEY = "nautilus_welcomed";
+const STORAGE_KEY = "nautilus_tour_v2";
 const TOOLTIP_W = 272;
 const PAD = 8;
 const GAP = 14;
@@ -52,13 +52,21 @@ function measure(target: string): DOMRect4 | null {
 }
 
 export function ProductTour() {
-  const [show, setShow]   = useState(false);
-  const [step, setStep]   = useState(0);
-  const [rect, setRect]   = useState<DOMRect4 | null>(null);
-  const router            = useRouter();
+  const [show, setShow] = useState(false);
+  const [step, setStep] = useState(0);
+  const [rect, setRect] = useState<DOMRect4 | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!localStorage.getItem(STORAGE_KEY)) setShow(true);
+
+    const handleReplay = () => {
+      localStorage.removeItem(STORAGE_KEY);
+      setStep(0);
+      setShow(true);
+    };
+    window.addEventListener("nautilus:replay-tour", handleReplay);
+    return () => window.removeEventListener("nautilus:replay-tour", handleReplay);
   }, []);
 
   const current = STEPS[step];
@@ -109,9 +117,9 @@ export function ProductTour() {
         <div
           style={{
             position: "fixed",
-            top:    rect.top    - PAD,
-            left:   rect.left   - PAD * 2,
-            width:  rect.width  + PAD * 4,
+            top: rect.top - PAD,
+            left: rect.left - PAD * 2,
+            width: rect.width  + PAD * 4,
             height: rect.height + PAD * 2,
             borderRadius: 10,
             boxShadow: "0 0 0 9999px rgba(0,0,0,0.50)",
@@ -130,8 +138,8 @@ export function ProductTour() {
         <div
           style={{
             position: "fixed",
-            top:   tooltipTop,
-            left:  tooltipLeft,
+            top: tooltipTop,
+            left: tooltipLeft,
             width: TOOLTIP_W,
             zIndex: 51,
           }}
@@ -237,7 +245,7 @@ function TourCard({ step, total, title, desc, isFirst, isLast, onPrev, onNext, o
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold text-white bg-cyan-400 hover:bg-cyan-500 transition-colors"
           >
             {isLast
-              ? <><Sparkles className="w-3.5 h-3.5" /> Let&apos;s go!</>
+              ? <> Let&apos;s go!</>
               : <>Next <ArrowRight className="w-3.5 h-3.5" /></>
             }
           </button>
