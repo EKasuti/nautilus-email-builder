@@ -169,6 +169,12 @@ See `backend/tests/` and `frontend/src/__tests__/` for test files.
 
 ---
 
+## Time Spent
+
+Roughly 3 hours total. A chunk of that was waiting on DNS propagation after purchasing a domain to get the live deployment working with Resend's domain verification.
+
+---
+
 ## Assumptions
 
 1. The "drag-and-drop" requirement is satisfied by the builder's draggable block handles — a full Puck integration would require significant additional work for marginal UX gain over the custom block system.
