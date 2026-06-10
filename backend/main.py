@@ -44,6 +44,32 @@ def config():
     return {"from_email": EMAIL_FROM}
 
 
+@app.get("/api/templates")
+def list_templates():
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, blocks, created_at FROM saved_templates ORDER BY created_at DESC")
+            rows = cur.fetchall()
+    return [{"id": r[0], "name": r[1], "blocks": r[2], "created_at": r[3].isoformat()} for r in rows]
+
+
+@app.post("/api/templates", status_code=201)
+def save_template(payload: dict):
+    name = payload.get("name", "").strip()
+    blocks = payload.get("blocks", [])
+    if not name:
+        raise HTTPException(status_code=400, detail="Template name is required.")
+    import json
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO saved_templates (name, blocks) VALUES (%s, %s) RETURNING id",
+                (name, json.dumps(blocks)),
+            )
+            new_id = cur.fetchone()[0]
+    return {"id": new_id, "name": name}
+
+
 @app.get("/api/groups")
 def list_groups():
     with get_conn() as conn:
@@ -68,35 +94,42 @@ def send_email(payload: SendEmailRequest):
 
     html = render_html(payload.blocks)
 
+    resend_params: dict = {
+        "from": EMAIL_FROM,
+        "to": [payload.to],
+        "subject": payload.subject,
+        "html": html,
+    }
+    if payload.send_mode == "schedule" and payload.scheduled_at:
+        resend_params["scheduled_at"] = payload.scheduled_at
+
     try:
-        response = resend.Emails.send({
-            "from": EMAIL_FROM,
-            "to": [payload.to],
-            "subject": payload.subject,
-            "html": html,
-        })
+        response = resend.Emails.send(resend_params)
     except resend.exceptions.ResendError as e:
         raise HTTPException(status_code=502, detail=f"Resend error: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
 
     resend_id = response.get("id") if isinstance(response, dict) else getattr(response, "id", None)
+    status = "scheduled" if payload.send_mode == "schedule" else "sent"
 
     try:
         with get_conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO email_logs (resend_id, template, subject, from_email, to_email, send_mode, status)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO email_logs
+                        (resend_id, template, subject, from_email, to_email, send_mode, status, scheduled_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (resend_id, payload.template, payload.subject, EMAIL_FROM, payload.to, payload.send_mode, "sent"),
+                    (resend_id, payload.template, payload.subject, EMAIL_FROM, payload.to,
+                     payload.send_mode, status, payload.scheduled_at),
                 )
     except Exception as e:
-        # Don't fail the request if DB logging fails — email was already sent
         print(f"[DB] Failed to log email: {e}")
 
-    return SendEmailResponse(success=True, id=resend_id, message=f"Email sent to {payload.to}")
+    msg = f"Email scheduled for {payload.to}" if payload.send_mode == "schedule" else f"Email sent to {payload.to}"
+    return SendEmailResponse(success=True, id=resend_id, message=msg)
 
 
 @app.get("/api/scheduled")
@@ -104,15 +137,16 @@ def scheduled():
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, resend_id, subject, to_email, template, send_mode, status, sent_at
+                SELECT id, resend_id, subject, to_email, template, send_mode, status, sent_at, scheduled_at
                 FROM email_logs
-                ORDER BY sent_at DESC
+                WHERE send_mode = 'schedule'
+                ORDER BY COALESCE(scheduled_at, sent_at) ASC
             """)
             rows = cur.fetchall()
 
     enriched = []
     for row in rows:
-        log_id, resend_id, subject, to_email, template, send_mode, status, sent_at = row
+        log_id, resend_id, subject, to_email, template, send_mode, status, sent_at, scheduled_at = row
         last_event = status
         if resend_id:
             try:
@@ -129,6 +163,7 @@ def scheduled():
             "mode": send_mode,
             "last_event": last_event,
             "sent_at": sent_at.isoformat(),
+            "scheduled_at": scheduled_at.isoformat() if scheduled_at else None,
         })
 
     return enriched

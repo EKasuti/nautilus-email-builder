@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mail, Clock, Zap } from "lucide-react";
+import { Mail, Clock } from "lucide-react";
 import { API_BASE_URL } from "@/config/api";
 
 interface SendRecord {
@@ -13,6 +13,7 @@ interface SendRecord {
   mode: string;
   last_event: string;
   sent_at: string;
+  scheduled_at: string | null;
 }
 
 const EVENT_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
@@ -41,17 +42,6 @@ function fmtDatetime(iso: string) {
   });
 }
 
-function ModeBadge({ mode }: { mode: string }) {
-  return mode === "schedule" ? (
-    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-      <Clock className="w-3 h-3" /> Scheduled
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-      <Zap className="w-3 h-3" /> Sent now
-    </span>
-  );
-}
 
 export default function ScheduledPage() {
   const [records, setRecords] = useState<SendRecord[]>([]);
@@ -85,11 +75,11 @@ export default function ScheduledPage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
         <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-          <Mail className="w-6 h-6 text-gray-300" />
+          <Clock className="w-6 h-6 text-gray-300" />
         </div>
-        <p className="text-[14px] font-medium text-gray-400">No emails sent yet</p>
+        <p className="text-[14px] font-medium text-gray-400">No scheduled emails</p>
         <p className="text-[13px] text-gray-300">
-          Emails you send from the Builder will appear here.
+          Use the Schedule option in the Builder to queue emails for a future time.
         </p>
       </div>
     );
@@ -102,21 +92,21 @@ export default function ScheduledPage() {
       <div className="flex items-center gap-6 mb-6">
         <div>
           <p className="text-[26px] font-bold text-gray-900 leading-tight">{records.length}</p>
-          <p className="text-[12px] text-gray-400 font-medium uppercase tracking-wide">Total sends</p>
+          <p className="text-[12px] text-gray-400 font-medium uppercase tracking-wide">Scheduled</p>
         </div>
         <div className="w-px h-10 bg-gray-200" />
         <div>
           <p className="text-[26px] font-bold text-gray-900 leading-tight">
-            {records.filter((r) => r.last_event === "delivered" || r.last_event === "opened" || r.last_event === "clicked").length}
+            {records.filter((r) => ["delivered", "opened", "clicked"].includes(r.last_event)).length}
           </p>
           <p className="text-[12px] text-gray-400 font-medium uppercase tracking-wide">Delivered</p>
         </div>
         <div className="w-px h-10 bg-gray-200" />
         <div>
           <p className="text-[26px] font-bold text-gray-900 leading-tight">
-            {records.filter((r) => r.mode === "schedule").length}
+            {records.filter((r) => r.last_event === "scheduled").length}
           </p>
-          <p className="text-[12px] text-gray-400 font-medium uppercase tracking-wide">Scheduled</p>
+          <p className="text-[12px] text-gray-400 font-medium uppercase tracking-wide">Pending</p>
         </div>
       </div>
 
@@ -125,7 +115,7 @@ export default function ScheduledPage() {
         <table className="w-full text-[13px]">
           <thead>
             <tr className="border-b border-gray-100 text-left">
-              {["Subject", "Recipient", "Template", "Mode", "Sent at", "Status"].map((h) => (
+              {["Subject", "Recipient", "Template", "Scheduled for", "Status"].map((h) => (
                 <th key={h} className="px-6 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">
                   {h}
                 </th>
@@ -138,8 +128,9 @@ export default function ScheduledPage() {
                 <td className="px-6 py-3.5 font-medium text-gray-800 max-w-[220px] truncate">{r.subject}</td>
                 <td className="px-6 py-3.5 text-gray-500 max-w-[180px] truncate">{r.to}</td>
                 <td className="px-6 py-3.5 text-gray-400 capitalize">{r.template}</td>
-                <td className="px-6 py-3.5"><ModeBadge mode={r.mode} /></td>
-                <td className="px-6 py-3.5 text-gray-400 whitespace-nowrap">{fmtDatetime(r.sent_at)}</td>
+                <td className="px-6 py-3.5 text-gray-400 whitespace-nowrap">
+                  {r.scheduled_at ? fmtDatetime(r.scheduled_at) : "—"}
+                </td>
                 <td className="px-6 py-3.5"><StatusBadge event={r.last_event} /></td>
               </tr>
             ))}

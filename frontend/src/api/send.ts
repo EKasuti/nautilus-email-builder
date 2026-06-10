@@ -18,6 +18,7 @@ export interface SendPayload {
   blocks: Block[];
   template?: string;
   send_mode: "now" | "schedule";
+  scheduled_at?: string;
 }
 
 export interface SendResult {

@@ -1,10 +1,10 @@
 "use client";
 
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Undo2, Redo2, Monitor, Smartphone, Pencil, Eye, ArrowRight,
-  Type, Image as ImageIcon, Square, Layout, BoxSelect, GripVertical, Copy, Trash2, Box,
+  Type, Image as ImageIcon, Square, Layout, BoxSelect, GripVertical, Copy, Trash2, Box, BookmarkPlus, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { EmailFooter } from "@/components/EmailFooter";
+import { API_BASE_URL } from "@/config/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type DeviceMode = "desktop" | "mobile";
@@ -59,13 +60,55 @@ function createBlock(type: BlockType): Block {
   }
 }
 
-// ─── Default blocks ───────────────────────────────────────────────────────────
-const DEFAULT_BLOCKS: Block[] = [
-  { id: "b1", type: "header", content: "Nautilus Car Wash", color: "#06ADD8", align: "center" },
-  { id: "b2", type: "heading", content: "Welcome aboard!", color: "#082D48", fontSize: 24, align: "center" },
-  { id: "b3", type: "text", content: "We're thrilled to have you join the Nautilus family. Get ready for the cleanest car in town. As a welcome gift, your first premium wash is on us.", color: "#5B6B7A", fontSize: 15, align: "center" },
-  { id: "b4", type: "button", content: "Claim my free wash", color: "#06ADD8", url: "https://nautilus.co/claim", align: "center" },
-];
+// ─── Template-specific default blocks ────────────────────────────────────────
+const TEMPLATE_BLOCKS: Record<string, Block[]> = {
+  welcome: [
+    { id: "b1", type: "header",  content: "Nautilus Car Wash", color: "#06ADD8", align: "center" },
+    { id: "b2", type: "heading", content: "Welcome aboard!", color: "#082D48", fontSize: 24, align: "center" },
+    { id: "b3", type: "text",    content: "We're thrilled to have you join the Nautilus family. Get ready for the cleanest car in town. As a welcome gift, your first premium wash is on us.", color: "#5B6B7A", fontSize: 15, align: "center" },
+    { id: "b4", type: "button",  content: "Claim my free wash", color: "#06ADD8", url: "https://nautilus.co/claim", align: "center" },
+  ],
+  promo: [
+    { id: "b1", type: "header",  content: "Nautilus Car Wash", color: "#C0492A", align: "center" },
+    { id: "b2", type: "heading", content: "This week only — 20% off", color: "#082D48", fontSize: 24, align: "center" },
+    { id: "b3", type: "text",    content: "Treat your car to a premium wash at a special price. Use code SHINE20 at checkout. Offer ends Sunday.", color: "#5B6B7A", fontSize: 15, align: "center" },
+    { id: "b4", type: "button",  content: "Redeem offer", color: "#C0492A", url: "https://nautilus.co/promo", align: "center" },
+    { id: "b5", type: "text",    content: "Valid at all Nautilus locations. Cannot be combined with other offers.", color: "#9CA3AF", fontSize: 12, align: "center" },
+  ],
+  offers: [
+    { id: "b1", type: "header",  content: "Nautilus Car Wash", color: "#9A6410", align: "center" },
+    { id: "b2", type: "heading", content: "An offer just for you", color: "#082D48", fontSize: 24, align: "center" },
+    { id: "b3", type: "text",    content: "Upgrade to our Unlimited plan and get your first month free. No commitment, cancel anytime.", color: "#5B6B7A", fontSize: 15, align: "center" },
+    { id: "b4", type: "section", content: "", color: "#E6EAEF", align: "center" },
+    { id: "b5", type: "heading", content: "Unlimited washes · Priority lanes · Free vacuums", color: "#9A6410", fontSize: 16, align: "center" },
+    { id: "b6", type: "button",  content: "Claim free month", color: "#9A6410", url: "https://nautilus.co/upgrade", align: "center" },
+  ],
+  newsletter: [
+    { id: "b1", type: "header",  content: "Nautilus Car Wash", color: "#2464EA", align: "center" },
+    { id: "b2", type: "heading", content: "June updates from Nautilus", color: "#082D48", fontSize: 22, align: "center" },
+    { id: "b3", type: "text",    content: "Here's what's new this month — new locations, service upgrades, and a community highlight.", color: "#5B6B7A", fontSize: 15, align: "center" },
+    { id: "b4", type: "section", content: "", color: "#E6EAEF", align: "center" },
+    { id: "b5", type: "heading", content: "New location open in Chula Vista", color: "#082D48", fontSize: 18, align: "left" },
+    { id: "b6", type: "text",    content: "Our newest location at 500 Broadway is now open 7 days a week. Stop by and experience the fastest wash in town.", color: "#5B6B7A", fontSize: 14, align: "left" },
+    { id: "b7", type: "section", content: "", color: "#E6EAEF", align: "center" },
+    { id: "b8", type: "button",  content: "Read full update", color: "#2464EA", url: "https://nautilus.co/newsletter", align: "center" },
+  ],
+  membership: [
+    { id: "b1", type: "header",  content: "Nautilus Car Wash", color: "#7A39ED", align: "center" },
+    { id: "b2", type: "heading", content: "Your membership renews soon", color: "#082D48", fontSize: 24, align: "center" },
+    { id: "b3", type: "text",    content: "Your Nautilus Unlimited plan renews on July 1. No action needed — we'll charge your card on file automatically.", color: "#5B6B7A", fontSize: 15, align: "center" },
+    { id: "b4", type: "section", content: "", color: "#E6EAEF", align: "center" },
+    { id: "b5", type: "heading", content: "Plan: Unlimited · $29.99/mo", color: "#7A39ED", fontSize: 16, align: "center" },
+    { id: "b6", type: "button",  content: "Manage membership", color: "#7A39ED", url: "https://nautilus.co/account", align: "center" },
+  ],
+  announcement: [
+    { id: "b1", type: "header",  content: "Nautilus Car Wash", color: "#993556", align: "center" },
+    { id: "b2", type: "heading", content: "Important update from Nautilus", color: "#082D48", fontSize: 24, align: "center" },
+    { id: "b3", type: "text",    content: "We're expanding our hours! Starting July 1st, all locations will be open from 7 AM to 9 PM, seven days a week.", color: "#5B6B7A", fontSize: 15, align: "center" },
+    { id: "b4", type: "button",  content: "See all locations", color: "#993556", url: "https://nautilus.co/locations", align: "center" },
+    { id: "b5", type: "text",    content: "Questions? Reply to this email or contact us at hello@nautilus.co", color: "#9CA3AF", fontSize: 13, align: "center" },
+  ],
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function PaletteChip({ icon: Icon, label, onDragStart, onDragEnd }: {
@@ -240,18 +283,51 @@ function EmailBlock({ block, index, isSelected, isEditMode, onSelect, onUpdate, 
 }
 
 // ─── Main builder ─────────────────────────────────────────────────────────────
-export function EmailBuilderClient({ template }: { template?: string }) {
+export function EmailBuilderClient({ template, savedId }: { template?: string; savedId?: string }) {
   const router = useRouter();
-  const isCustom = template === "custom";
+  const isCustom = template === "custom" || !!savedId;
+  const initialBlocks = isCustom ? [] : (TEMPLATE_BLOCKS[template ?? "welcome"] ?? TEMPLATE_BLOCKS.welcome);
 
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
   const [viewMode, setViewMode] = useState<ViewMode>("edit");
-  const [blocks, setBlocks] = useState<Block[]>(isCustom ? [] : DEFAULT_BLOCKS);
+  const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [selectedId, setSelectedId] = useState<string | null>(isCustom ? null : "b2");
+
+  useEffect(() => {
+    if (!savedId) return;
+    fetch(`${API_BASE_URL}/api/templates`)
+      .then((r) => r.json())
+      .then((list: { id: number; blocks: Block[] }[]) => {
+        const found = list.find((t) => String(t.id) === savedId);
+        if (found) setBlocks(found.blocks);
+      })
+      .catch(() => {});
+  }, [savedId]);
 
   const dragData = useRef<DragData | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "done" | "error">("idle");
+
+  const handleSaveTemplate = async () => {
+    if (!saveName.trim()) return;
+    setSaveStatus("saving");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/templates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: saveName.trim(), blocks }),
+      });
+      if (!res.ok) throw new Error();
+      setSaveStatus("done");
+      setTimeout(() => { setShowSaveModal(false); setSaveName(""); setSaveStatus("idle"); }, 1200);
+    } catch {
+      setSaveStatus("error");
+    }
+  };
 
   const selectedBlock = blocks.find((b) => b.id === selectedId);
 
@@ -326,7 +402,12 @@ export function EmailBuilderClient({ template }: { template?: string }) {
       <div className="h-14 border-b border-gray-200 flex items-center justify-between px-4 bg-white flex-shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-[15px] font-medium text-gray-900">
-            {isCustom ? "Custom template" : "Welcome message"}
+            {{
+              welcome: "Welcome message", promo: "Promotions / discounts",
+              offers: "Offers", newsletter: "Newsletter",
+              membership: "Membership", announcement: "Announcement",
+              custom: "Custom template",
+            }[template ?? "welcome"] ?? "Custom template"}
           </span>
           <Badge variant="secondary" className="text-[11px] uppercase tracking-wider">Draft</Badge>
         </div>
@@ -371,6 +452,14 @@ export function EmailBuilderClient({ template }: { template?: string }) {
             </button>
           </div>
 
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-gray-600 border-gray-200"
+            onClick={() => { setSaveName(""); setSaveStatus("idle"); setShowSaveModal(true); }}
+          >
+            <BookmarkPlus className="w-3.5 h-3.5" /> Save template
+          </Button>
           <Button
             size="sm"
             className="bg-cyan-400 hover:bg-cyan-500 text-white gap-1.5"
@@ -541,6 +630,49 @@ export function EmailBuilderClient({ template }: { template?: string }) {
           </div>
         )}
       </div>
+
+      {/* Save template modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl border border-gray-200 w-[360px] p-6 space-y-4">
+            <h3 className="text-[15px] font-semibold text-gray-900">Save as template</h3>
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-medium text-gray-500">Template name</label>
+              <input
+                autoFocus
+                type="text"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveTemplate(); if (e.key === "Escape") setShowSaveModal(false); }}
+                placeholder="e.g. Summer promo"
+                className="w-full h-9 px-3 rounded-md border border-gray-200 text-[13px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              />
+            </div>
+            {saveStatus === "error" && (
+              <p className="text-[12px] text-red-500">Failed to save — is the backend running?</p>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="flex-1 h-9 rounded-md border border-gray-200 text-[13px] font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTemplate}
+                disabled={!saveName.trim() || saveStatus === "saving"}
+                className="flex-1 h-9 rounded-md bg-cyan-400 hover:bg-cyan-500 disabled:opacity-50 text-white text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5"
+              >
+                {saveStatus === "done" ? (
+                  <><Check className="w-4 h-4" /> Saved!</>
+                ) : saveStatus === "saving" ? "Saving…" : (
+                  <><BookmarkPlus className="w-4 h-4" /> Save</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

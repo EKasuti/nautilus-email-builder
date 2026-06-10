@@ -26,10 +26,14 @@ def init_db():
                     subject     TEXT NOT NULL,
                     from_email  TEXT NOT NULL,
                     to_email    TEXT NOT NULL,
-                    send_mode   TEXT NOT NULL DEFAULT 'now',
-                    status      TEXT NOT NULL DEFAULT 'sent',
-                    sent_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    send_mode    TEXT NOT NULL DEFAULT 'now',
+                    status       TEXT NOT NULL DEFAULT 'sent',
+                    sent_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    scheduled_at TIMESTAMPTZ
                 )
+            """)
+            cur.execute("""
+                ALTER TABLE email_logs ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ
             """)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS groups (
@@ -45,5 +49,13 @@ def init_db():
                     name       TEXT,
                     group_slug TEXT REFERENCES groups(slug),
                     joined_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS saved_templates (
+                    id         SERIAL PRIMARY KEY,
+                    name       TEXT NOT NULL,
+                    blocks     JSONB NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
             """)
