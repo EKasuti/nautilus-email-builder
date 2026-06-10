@@ -9,10 +9,10 @@ import {
 } from "@/components/ui/breadcrumb";
 
 const TABS = [
-  { label: "Templates", href: "/email/templates" },
-  { label: "Builder", href: "/email/builder" },
-  { label: "Scheduled", href: "/email/scheduled" },
-  { label: "Analytics", href: "/email/analytics" },
+  { label: "Templates", href: "/email/templates", tour: "tour-templates" },
+  { label: "Builder",   href: "/email/builder",   tour: "tour-builder"   },
+  { label: "Scheduled", href: "/email/scheduled", tour: "tour-scheduled" },
+  { label: "Analytics", href: "/email/analytics", tour: "tour-analytics" },
 ];
 
 export function EmailNav() {
@@ -55,6 +55,7 @@ export function EmailNav() {
               <Link
                 key={tab.href}
                 href={tab.href}
+                data-tour={tab.tour}
                 className={`relative flex items-center px-1 text-[14px] font-medium transition-colors ${isActive ? "text-cyan-500" : "text-gray-500 hover:text-gray-800"}`}
               >
                 {tab.label}

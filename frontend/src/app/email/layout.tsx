@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/Sidebar";
 import { EmailNav } from "@/components/EmailNav";
+import { ProductTour } from "@/components/ProductTour";
 
 export default function EmailLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export default function EmailLayout({ children }: { children: React.ReactNode })
         <EmailNav />
         <div className="flex-1 overflow-hidden bg-gray-50">{children}</div>
       </div>
+      <ProductTour />
     </div>
   );
 }
