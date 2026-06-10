@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { Mail, Clock } from "lucide-react";
 import { API_BASE_URL } from "@/config/api";
 
-interface SendRecord {
+interface ScheduledEmail {
   id: number;
-  resend_id: string;
+  resend_id: string | null;
   subject: string;
   to: string;
   template: string;
@@ -16,126 +16,104 @@ interface SendRecord {
   scheduled_at: string | null;
 }
 
-const EVENT_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  delivered: { bg: "bg-cyan-50",   text: "text-cyan-600",   dot: "bg-cyan-400" },
-  opened:    { bg: "bg-purple-50", text: "text-purple-600", dot: "bg-purple-400" },
-  clicked:   { bg: "bg-green-50",  text: "text-green-600",  dot: "bg-green-400" },
-  bounced:   { bg: "bg-red-50",    text: "text-red-500",    dot: "bg-red-400" },
-  complained:{ bg: "bg-orange-50", text: "text-orange-500", dot: "bg-orange-400" },
-  sent:      { bg: "bg-gray-100",  text: "text-gray-500",   dot: "bg-gray-400" },
-};
-
-function StatusBadge({ event }: { event: string }) {
-  const style = EVENT_COLORS[event] ?? EVENT_COLORS.sent;
+function EventBadge({ event }: { event: string }) {
+  const map: Record<string, { label: string; bg: string; color: string }> = {
+    scheduled:  { label: "Scheduled",  bg: "#EFF6FF", color: "#2563EB" },
+    sent:       { label: "Sent",       bg: "#F0FDF4", color: "#16A34A" },
+    delivered:  { label: "Delivered",  bg: "#F0FDF4", color: "#15803D" },
+    opened:     { label: "Opened",     bg: "#FEFCE8", color: "#CA8A04" },
+    clicked:    { label: "Clicked",    bg: "#FFF7ED", color: "#EA580C" },
+    bounced:    { label: "Bounced",    bg: "#FEF2F2", color: "#DC2626" },
+    complained: { label: "Complained", bg: "#FEF2F2", color: "#DC2626" },
+  };
+  const cfg = map[event] ?? { label: event, bg: "#F3F4F6", color: "#6B7280" };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ${style.bg} ${style.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-      {event}
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold"
+      style={{ backgroundColor: cfg.bg, color: cfg.color }}
+    >
+      {cfg.label}
     </span>
   );
 }
 
 function fmtDatetime(iso: string) {
   return new Date(iso).toLocaleString("en-US", {
-    month: "short", day: "numeric",
+    month: "short", day: "numeric", year: "numeric",
     hour: "numeric", minute: "2-digit",
   });
 }
 
-
 export default function ScheduledPage() {
-  const [records, setRecords] = useState<SendRecord[]>([]);
+  const [rows, setRows] = useState<ScheduledEmail[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/scheduled`)
-      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
-      .then((data) => { setRecords(data); setLoading(false); })
-      .catch(() => { setError(true); setLoading(false); });
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => { setRows(data); setLoading(false); })
+      .catch(() => setLoading(false));
   }, []);
 
-  if (error) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-        Could not load — is the backend running?
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-gray-300 text-sm animate-pulse">
-        Loading…
-      </div>
-    );
-  }
-
-  if (records.length === 0) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8">
-        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-          <Clock className="w-6 h-6 text-gray-300" />
-        </div>
-        <p className="text-[14px] font-medium text-gray-400">No scheduled emails</p>
-        <p className="text-[13px] text-gray-300">
-          Use the Schedule option in the Builder to queue emails for a future time.
-        </p>
-      </div>
-    );
-  }
+  const total      = rows.length;
+  const delivered  = rows.filter((r) => ["delivered", "opened", "clicked"].includes(r.last_event)).length;
+  const pending    = rows.filter((r) => ["scheduled", "sent"].includes(r.last_event)).length;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 p-8">
+    <div className="flex-1 overflow-y-auto p-8 space-y-6">
+      <h1 className="text-[22px] font-semibold text-gray-900">Scheduled emails</h1>
 
       {/* Summary strip */}
-      <div className="flex items-center gap-6 mb-6">
-        <div>
-          <p className="text-[26px] font-bold text-gray-900 leading-tight">{records.length}</p>
-          <p className="text-[12px] text-gray-400 font-medium uppercase tracking-wide">Scheduled</p>
-        </div>
-        <div className="w-px h-10 bg-gray-200" />
-        <div>
-          <p className="text-[26px] font-bold text-gray-900 leading-tight">
-            {records.filter((r) => ["delivered", "opened", "clicked"].includes(r.last_event)).length}
-          </p>
-          <p className="text-[12px] text-gray-400 font-medium uppercase tracking-wide">Delivered</p>
-        </div>
-        <div className="w-px h-10 bg-gray-200" />
-        <div>
-          <p className="text-[26px] font-bold text-gray-900 leading-tight">
-            {records.filter((r) => r.last_event === "scheduled").length}
-          </p>
-          <p className="text-[12px] text-gray-400 font-medium uppercase tracking-wide">Pending</p>
-        </div>
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: "Scheduled", value: total },
+          { label: "Delivered", value: delivered },
+          { label: "Pending",   value: pending },
+        ].map(({ label, value }) => (
+          <div key={label} className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="text-[13px] text-gray-400 mb-1">{label}</p>
+            <p className="text-[28px] font-semibold text-gray-900 leading-none">{value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="border-b border-gray-100 text-left">
-              {["Subject", "Recipient", "Template", "Scheduled for", "Status"].map((h) => (
-                <th key={h} className="px-6 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wide whitespace-nowrap">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => (
-              <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-3.5 font-medium text-gray-800 max-w-[220px] truncate">{r.subject}</td>
-                <td className="px-6 py-3.5 text-gray-500 max-w-[180px] truncate">{r.to}</td>
-                <td className="px-6 py-3.5 text-gray-400 capitalize">{r.template}</td>
-                <td className="px-6 py-3.5 text-gray-400 whitespace-nowrap">
-                  {r.scheduled_at ? fmtDatetime(r.scheduled_at) : "—"}
-                </td>
-                <td className="px-6 py-3.5"><StatusBadge event={r.last_event} /></td>
+        {loading ? (
+          <div className="flex items-center justify-center h-40 text-gray-400 text-sm">Loading…</div>
+        ) : rows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 gap-3 text-gray-300">
+            <Clock className="w-10 h-10" />
+            <p className="text-[14px] font-medium">No scheduled emails</p>
+          </div>
+        ) : (
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="border-b border-gray-100">
+                {["Subject", "Recipient", "Template", "Scheduled for", "Status"].map((h) => (
+                  <th key={h} className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
+                  <td className="px-5 py-3 font-medium text-gray-900 max-w-[220px] truncate">{r.subject}</td>
+                  <td className="px-5 py-3 text-gray-500">{r.to}</td>
+                  <td className="px-5 py-3 text-gray-500 capitalize">{r.template}</td>
+                  <td className="px-5 py-3 text-gray-500">
+                    {r.scheduled_at ? fmtDatetime(r.scheduled_at) : "—"}
+                  </td>
+                  <td className="px-5 py-3">
+                    <EventBadge event={r.last_event} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
