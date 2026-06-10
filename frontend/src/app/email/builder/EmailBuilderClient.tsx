@@ -374,7 +374,10 @@ export function EmailBuilderClient({ template }: { template?: string }) {
           <Button
             size="sm"
             className="bg-cyan-400 hover:bg-cyan-500 text-white gap-1.5"
-            onClick={() => router.push(`/email/builder/send?template=${template ?? ""}`)}
+            onClick={() => {
+              localStorage.setItem("email-draft-blocks", JSON.stringify(blocks));
+              router.push(`/email/builder/send?template=${template ?? ""}`);
+            }}
           >
             Continue to send <ArrowRight className="w-3.5 h-3.5" />
           </Button>
