@@ -59,3 +59,17 @@ def init_db():
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
             """)
+            cur.execute("ALTER TABLE email_logs ADD COLUMN IF NOT EXISTS blocks JSONB")
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS recurring_emails (
+                    id           SERIAL PRIMARY KEY,
+                    email_to     TEXT NOT NULL,
+                    subject      TEXT NOT NULL,
+                    template     TEXT,
+                    blocks       JSONB NOT NULL DEFAULT '[]',
+                    frequency    TEXT NOT NULL DEFAULT 'weekly',
+                    next_send_at TIMESTAMPTZ NOT NULL,
+                    active       BOOLEAN NOT NULL DEFAULT TRUE,
+                    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
