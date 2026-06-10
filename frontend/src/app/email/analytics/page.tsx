@@ -108,9 +108,12 @@ export default function AnalyticsPage() {
     );
   }
 
-  const delivered = data.event_counts["delivered"] ?? 0;
-  const opened    = data.event_counts["opened"]    ?? 0;
-  const clicked   = data.event_counts["clicked"]   ?? 0;
+  // last_event is cumulative: clicked > opened > delivered > sent
+  // so an email with last_event="clicked" was also opened and delivered
+  const ec = data.event_counts;
+  const clicked = ec["clicked"] ?? 0;
+  const opened = (ec["opened"] ?? 0) + clicked;
+  const delivered = (ec["delivered"] ?? 0) + opened;
 
   const isEmpty = data.total_sent === 0;
 
@@ -119,10 +122,10 @@ export default function AnalyticsPage() {
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Mail}              label="Total sent" value={data.total_sent.toLocaleString()} color="#22d3ee" />
-        <StatCard icon={CheckCircle2}      label="Delivered"  value={delivered.toLocaleString()} sub="confirmed by Resend" color="#34d399" />
-        <StatCard icon={Users}             label="Opens"      value={opened.toLocaleString()} sub="unique email opens" color="#a78bfa" />
-        <StatCard icon={MousePointerClick} label="Clicks"     value={clicked.toLocaleString()} sub="link clicks tracked" color="#f472b6" />
+        <StatCard icon={Mail} label="Total sent" value={data.total_sent.toLocaleString()} color="#22d3ee" />
+        <StatCard icon={CheckCircle2} label="Delivered"  value={delivered.toLocaleString()} sub="confirmed by Resend" color="#34d399" />
+        <StatCard icon={Users} label="Opens" value={opened.toLocaleString()} sub="unique email opens" color="#a78bfa" />
+        <StatCard icon={MousePointerClick} label="Clicks" value={clicked.toLocaleString()} sub="link clicks tracked" color="#f472b6" />
       </div>
 
       {isEmpty ? (

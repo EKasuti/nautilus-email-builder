@@ -87,7 +87,12 @@ function SendPageInner() {
   const [to, setTo]           = useState("");
   const [subject, setSubject] = useState("Welcome to Nautilus 🚗");
   const [sendMode, setSendMode] = useState<"now" | "schedule">("now");
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [schedDate, setSchedDate] = useState("");
+  const [schedTime, setSchedTime] = useState("");
+
+  const scheduledAt = schedDate && schedTime
+    ? new Date(`${schedDate}T${schedTime}`).toISOString()
+    : "";
   const [sendToMode, setSendToMode] = useState<"single" | "group">("single");
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
@@ -133,14 +138,17 @@ function SendPageInner() {
       : to;
 
     try {
-      const result = await sendEmail({ to: recipient, subject, blocks, template, send_mode: sendMode });
+      const result = await sendEmail({
+        to: recipient, subject, blocks, template, send_mode: sendMode,
+        ...(sendMode === "schedule" && scheduledAt ? { scheduled_at: scheduledAt } : {}),
+      });
       setStatus("success");
       setSuccessMsg(
         sendToMode === "group"
           ? `Queued for ${totalRecipients.toLocaleString()} recipients.`
           : result.message
       );
-      setTimeout(() => router.push("/email/scheduled"), 2500);
+      setTimeout(() => router.push(sendMode === "schedule" ? "/email/scheduled" : "/email/analytics"), 2500);
     } catch (err: unknown) {
       setStatus("error");
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong.");
@@ -291,8 +299,8 @@ function SendPageInner() {
 
             {sendMode === "schedule" && (
               <div className="flex gap-2">
-                <Input type="date" className="flex-1 h-9 text-[13px]" onChange={(e) => setScheduledAt(e.target.value + (scheduledAt.includes("T") ? scheduledAt.slice(10) : ""))} />
-                <Input type="time" className="w-28 h-9 text-[13px]" onChange={(e) => setScheduledAt((scheduledAt.slice(0, 10) || "") + "T" + e.target.value)} />
+                <Input type="date" className="flex-1 h-9 text-[13px]" value={schedDate} onChange={(e) => setSchedDate(e.target.value)} />
+                <Input type="time" className="w-28 h-9 text-[13px]" value={schedTime} onChange={(e) => setSchedTime(e.target.value)} />
               </div>
             )}
 

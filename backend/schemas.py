@@ -20,6 +20,7 @@ class SendEmailRequest(BaseModel):
     blocks: list[Block]
     template: Optional[str] = None
     send_mode: str = "now"
+    scheduled_at: Optional[str] = None
 
 
 class SendEmailResponse(BaseModel):
