@@ -99,6 +99,69 @@ def send_email(payload: SendEmailRequest):
     return SendEmailResponse(success=True, id=resend_id, message=f"Email sent to {payload.to}")
 
 
+@app.get("/api/analytics")
+def analytics():
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, resend_id, subject, to_email, template, send_mode, status, sent_at
+                FROM email_logs
+                ORDER BY sent_at DESC
+            """)
+            rows = cur.fetchall()
+
+            cur.execute("SELECT COUNT(*) FROM members")
+            total_members = cur.fetchone()[0]
+
+    # Enrich with live Resend status
+    enriched = []
+    for row in rows:
+        log_id, resend_id, subject, to_email, template, send_mode, status, sent_at = row
+        last_event = status
+        if resend_id:
+            try:
+                result = resend.Emails.get(resend_id)
+                last_event = result.get("last_event", status) if isinstance(result, dict) else status
+            except Exception:
+                pass
+        enriched.append({
+            "resend_id": resend_id,
+            "subject": subject,
+            "to": to_email,
+            "template": template or "custom",
+            "mode": send_mode,
+            "last_event": last_event,
+            "sent_at": sent_at.isoformat(),
+        })
+
+    # Aggregate
+    total_sent = len(enriched)
+    unique_recipients = len({e["to"] for e in enriched})
+
+    event_counts: dict[str, int] = {}
+    for e in enriched:
+        event_counts[e["last_event"]] = event_counts.get(e["last_event"], 0) + 1
+
+    by_template: dict[str, int] = {}
+    for e in enriched:
+        by_template[e["template"]] = by_template.get(e["template"], 0) + 1
+
+    sends_by_day: dict[str, int] = {}
+    for e in enriched:
+        day = e["sent_at"][:10]
+        sends_by_day[day] = sends_by_day.get(day, 0) + 1
+
+    return {
+        "total_sent": total_sent,
+        "unique_recipients": unique_recipients,
+        "total_members": total_members,
+        "event_counts": event_counts,
+        "sends_by_day": [{"date": d, "sent": c} for d, c in sorted(sends_by_day.items())],
+        "by_template": [{"template": t, "count": c} for t, c in sorted(by_template.items(), key=lambda x: -x[1])],
+        "recent": enriched[:10],
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
