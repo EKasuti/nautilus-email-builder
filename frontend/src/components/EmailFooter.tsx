@@ -11,12 +11,12 @@ export function EmailFooter() {
 
       <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[12px] text-gray-400">
         {["Unsubscribe", "Manage preferences", "Visit website", "View in browser"].map((link, i, arr) => (
-          <>
-            <a key={link} href="#" onClick={(e) => e.preventDefault()} className="hover:text-cyan-500 transition-colors">
+          <span key={link} className="contents">
+            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-cyan-500 transition-colors">
               {link}
             </a>
             {i < arr.length - 1 && <span className="text-gray-300">·</span>}
-          </>
+          </span>
         ))}
       </div>
 
