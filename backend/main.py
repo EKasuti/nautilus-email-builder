@@ -99,6 +99,41 @@ def send_email(payload: SendEmailRequest):
     return SendEmailResponse(success=True, id=resend_id, message=f"Email sent to {payload.to}")
 
 
+@app.get("/api/scheduled")
+def scheduled():
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, resend_id, subject, to_email, template, send_mode, status, sent_at
+                FROM email_logs
+                ORDER BY sent_at DESC
+            """)
+            rows = cur.fetchall()
+
+    enriched = []
+    for row in rows:
+        log_id, resend_id, subject, to_email, template, send_mode, status, sent_at = row
+        last_event = status
+        if resend_id:
+            try:
+                result = resend.Emails.get(resend_id)
+                last_event = result.get("last_event", status) if isinstance(result, dict) else status
+            except Exception:
+                pass
+        enriched.append({
+            "id": log_id,
+            "resend_id": resend_id,
+            "subject": subject,
+            "to": to_email,
+            "template": template or "custom",
+            "mode": send_mode,
+            "last_event": last_event,
+            "sent_at": sent_at.isoformat(),
+        })
+
+    return enriched
+
+
 @app.get("/api/analytics")
 def analytics():
     with get_conn() as conn:
